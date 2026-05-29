@@ -81,9 +81,9 @@ extension Browser {
             "about:newtab", // Firefox
         ].contains(where: { url.absoluteString.contains($0) }) {
             return .newtab
-        } else {
-            return url
         }
+
+        return url
     }
 }
 
