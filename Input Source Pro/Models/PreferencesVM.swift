@@ -223,9 +223,13 @@ extension PreferencesVM {
         {
             return url
         } else {
-            if browser == .Safari || browser == .SafariTechnologyPreview {
+            // Safari and Firefox: AX URL extraction may fail, treat as newtab
+            // so the app is still recognized as a browser (not a normal app).
+            // Other browsers return nil to fall through to normal app handling.
+            switch browser {
+            case .Safari, .SafariTechnologyPreview, .Firefox, .FirefoxDeveloperEdition, .FirefoxNightly:
                 return .newtab
-            } else {
+            default:
                 return nil
             }
         }
