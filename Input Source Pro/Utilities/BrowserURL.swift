@@ -20,6 +20,8 @@ enum Browser: String, CaseIterable {
     case FirefoxNightly = "org.mozilla.nightly"
     case Zen = "app.zen-browser.zen"
     case Dia = "company.thebrowser.dia"
+    // #90/#65: ChatGPT Atlas browser support
+    case ChatGPTAtlas = "com.openai.chatgpt.atlas"
 
     var displayName: String {
         switch self {
@@ -57,6 +59,8 @@ enum Browser: String, CaseIterable {
             return "Zen"
         case .Dia:
             return "Dia"
+        case .ChatGPTAtlas:
+            return "ChatGPT Atlas"
         }
     }
 }

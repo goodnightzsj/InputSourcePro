@@ -213,6 +213,8 @@ extension PreferencesVM {
             guard preferences.isEnableURLSwitchForZen else { return nil }
         case .Dia:
             guard preferences.isEnableURLSwitchForDia else { return nil }
+        case .ChatGPTAtlas:
+            guard preferences.isEnableURLSwitchForChatGPTAtlas else { return nil }
         }
 
         if let application = application,
@@ -284,6 +286,7 @@ struct Preferences {
         static let isEnableURLSwitchForFirefoxNightly = "isEnableURLSwitchForFirefoxNightly"
         static let isEnableURLSwitchForZen = "isEnableURLSwitchForZen"
         static let isEnableURLSwitchForDia = "isEnableURLSwitchForDia"
+        static let isEnableURLSwitchForChatGPTAtlas = "isEnableURLSwitchForChatGPTAtlas"
 
         static let shortcutTriggerMode = "shortcutTriggerMode"
         static let singleModifierTrigger = "singleModifierTrigger"
@@ -463,6 +466,9 @@ struct Preferences {
     
     @UserDefault(Preferences.Key.isEnableURLSwitchForDia)
     var isEnableURLSwitchForDia = false
+
+    @UserDefault(Preferences.Key.isEnableURLSwitchForChatGPTAtlas)
+    var isEnableURLSwitchForChatGPTAtlas = false
 
     // MARK: - Appearance
 
