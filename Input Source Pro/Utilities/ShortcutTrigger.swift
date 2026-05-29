@@ -44,6 +44,8 @@ enum SingleModifierKey: String, CaseIterable, Identifiable, Codable {
     case rightOption
     case leftCommand
     case rightCommand
+    // #79: Caps Lock support (toggle behavior, not hold-to-press)
+    case capsLock
 
     var id: Self { self }
 
@@ -65,6 +67,8 @@ enum SingleModifierKey: String, CaseIterable, Identifiable, Codable {
             return "Left Command".i18n()
         case .rightCommand:
             return "Right Command".i18n()
+        case .capsLock:
+            return "Caps Lock".i18n()
         }
     }
 
@@ -86,6 +90,8 @@ enum SingleModifierKey: String, CaseIterable, Identifiable, Codable {
             return 6
         case .rightCommand:
             return 7
+        case .capsLock:
+            return 8
         }
     }
 
@@ -107,6 +113,8 @@ enum SingleModifierKey: String, CaseIterable, Identifiable, Codable {
             return UInt16(kVK_Command)
         case .rightCommand:
             return UInt16(kVK_RightCommand)
+        case .capsLock:
+            return UInt16(kVK_CapsLock)
         }
     }
 
@@ -120,6 +128,8 @@ enum SingleModifierKey: String, CaseIterable, Identifiable, Codable {
             return .option
         case .leftCommand, .rightCommand:
             return .command
+        case .capsLock:
+            return .capsLock
         }
     }
 
@@ -141,6 +151,8 @@ enum SingleModifierKey: String, CaseIterable, Identifiable, Codable {
             return .leftCommand
         case UInt16(kVK_RightCommand):
             return .rightCommand
+        case UInt16(kVK_CapsLock):
+            return .capsLock
         default:
             return nil
         }
@@ -255,6 +267,9 @@ final class ShortcutTriggerManager {
     private var lastEventTimestamp: TimeInterval = 0
     private var lastEventKeyCode: UInt16 = 0
 
+    /// #79: Track Caps Lock toggle state for press detection
+    private var capsLockState: Bool = false
+
     /// Reference to preferencesVM for permission watching
     private var preferencesVM: PreferencesVM
 
@@ -267,6 +282,8 @@ final class ShortcutTriggerManager {
     init(preferencesVM: PreferencesVM, doublePressInterval: TimeInterval = 0.35) {
         self.preferencesVM = preferencesVM
         self.doublePressInterval = doublePressInterval
+        // #79: Initialize Caps Lock state from current system state
+        capsLockState = NSEvent.modifierFlags.contains(.capsLock)
         watchPermissions()
     }
 
@@ -492,9 +509,21 @@ final class ShortcutTriggerManager {
         guard let key = SingleModifierKey.from(keyCode: event.keyCode) else { return }
 
         var flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        flags.remove(.capsLock)
 
-        let isKeyDown = flags.contains(key.modifierFlag)
+        // #79: Caps Lock has toggle behavior. Detect press by keyCode change
+        // rather than flag state, since the flag reflects toggle state (on/off)
+        // not the physical key press/release.
+        let isKeyDown: Bool
+        if key == .capsLock {
+            // Caps Lock: detect press by checking if the toggle state changed
+            let wasCapsLockOn = capsLockState
+            let isCapsLockOn = flags.contains(.capsLock)
+            isKeyDown = wasCapsLockOn != isCapsLockOn
+            capsLockState = isCapsLockOn
+        } else {
+            flags.remove(.capsLock)
+            isKeyDown = flags.contains(key.modifierFlag)
+        }
 
         if isKeyDown {
             lastKeyDownTimestamps[event.keyCode] = event.timestamp
