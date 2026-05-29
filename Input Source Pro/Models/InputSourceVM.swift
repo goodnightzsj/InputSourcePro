@@ -15,10 +15,11 @@ class InputSourceVM: ObservableObject {
 
     let preferencesVM: PreferencesVM
 
-    /// Tracks whether the most recent input source change was initiated by this app.
-    /// Used to filter out system notifications for programmatic switches, preventing
-    /// feedback loops where our own switch triggers `.inputSourceChanged` in IndicatorVM.
-    private var _isProgrammaticChange = false
+    /// Tracks the input source we're programmatically switching to.
+    /// Used to filter out system notifications that result from our own TISSelectInputSource
+    /// calls, preventing feedback loops in IndicatorVM. Set before the switch, cleared
+    /// after the notification is expected to have arrived.
+    private var programmaticTarget: InputSource?
 
     private var cancelBag = CancelBag()
 
@@ -41,7 +42,7 @@ class InputSourceVM: ObservableObject {
         selectInputSourceSubject
             .tap { [weak self] in
                 if let self {
-                    self._isProgrammaticChange = true
+                    self.programmaticTarget = $0.inputSource
                     $0.inputSource.select(
                         cJKVFixStrategy: self.preferencesVM.activeCJKVFixStrategy(for: $0.app),
                         allowShortcutFallback: $0.allowShortcutFallback
@@ -72,7 +73,8 @@ class InputSourceVM: ObservableObject {
             })
             .sink { [weak self] _ in
                 self?.inputSourceChangesSubject.send(())
-                self?._isProgrammaticChange = false
+                // Clear target after all checkpoints to stop filtering
+                self?.programmaticTarget = nil
             }
             .store(in: cancelBag)
     }
@@ -93,7 +95,14 @@ class InputSourceVM: ObservableObject {
         DistributedNotificationCenter.default()
             .publisher(for: Notification.Name(rawValue: kTISNotifySelectedKeyboardInputSourceChanged as String))
             .receive(on: DispatchQueue.main)
-            .filter { [weak self] _ in self?._isProgrammaticChange == false }
+            .filter { [weak self] _ in
+                // Filter out notifications caused by our own TISSelectInputSource calls.
+                // Compare current input source against our target: if they match, the
+                // notification is from our programmatic switch and should be ignored.
+                guard let target = self?.programmaticTarget else { return true }
+                let current = InputSource.getCurrentInputSource()
+                return current.persistentIdentifier != target.persistentIdentifier
+            }
             .sink { [weak self] _ in self?.inputSourceChangesSubject.send(())
             }
             .store(in: cancelBag)
