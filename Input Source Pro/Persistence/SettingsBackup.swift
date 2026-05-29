@@ -134,6 +134,11 @@ struct SettingsBackupPreferences: Codable {
     var isEnableURLSwitchForZen: Bool?
     var isEnableURLSwitchForDia: Bool?
     var isEnableURLSwitchForChatGPTAtlas: Bool?
+    var isGlobalForceEnglishPunctuation: Bool?
+    var indicatorHideDelay: Double?
+    var isHideAllIndicators: Bool?
+    var settingsFilePath: String?
+    var isShowInputSourceNameInMenuBar: Bool?
     var indicatorInfo: IndicatorInfo?
     var indicatorSize: IndicatorSize?
     var isAutoAppearanceMode: Bool?
@@ -189,6 +194,11 @@ struct SettingsBackupPreferences: Codable {
         isEnableURLSwitchForZen = preferences.isEnableURLSwitchForZen
         isEnableURLSwitchForDia = preferences.isEnableURLSwitchForDia
         isEnableURLSwitchForChatGPTAtlas = preferences.isEnableURLSwitchForChatGPTAtlas
+        isGlobalForceEnglishPunctuation = preferences.isGlobalForceEnglishPunctuation
+        indicatorHideDelay = preferences.indicatorHideDelay
+        isHideAllIndicators = preferences.isHideAllIndicators
+        settingsFilePath = preferences.settingsFilePath
+        isShowInputSourceNameInMenuBar = preferences.isShowInputSourceNameInMenuBar
         indicatorInfo = preferences.indicatorInfo
         indicatorSize = preferences.indicatorSize
         isAutoAppearanceMode = preferences.isAutoAppearanceMode
@@ -267,6 +277,11 @@ struct SettingsBackupPreferences: Codable {
         if let isEnableURLSwitchForZen { preferences.isEnableURLSwitchForZen = isEnableURLSwitchForZen }
         if let isEnableURLSwitchForDia { preferences.isEnableURLSwitchForDia = isEnableURLSwitchForDia }
         if let isEnableURLSwitchForChatGPTAtlas { preferences.isEnableURLSwitchForChatGPTAtlas = isEnableURLSwitchForChatGPTAtlas }
+        if let isGlobalForceEnglishPunctuation { preferences.isGlobalForceEnglishPunctuation = isGlobalForceEnglishPunctuation }
+        if let indicatorHideDelay { preferences.indicatorHideDelay = indicatorHideDelay }
+        if let isHideAllIndicators { preferences.isHideAllIndicators = isHideAllIndicators }
+        if let settingsFilePath { preferences.settingsFilePath = settingsFilePath }
+        if let isShowInputSourceNameInMenuBar { preferences.isShowInputSourceNameInMenuBar = isShowInputSourceNameInMenuBar }
         if let indicatorInfo { preferences.indicatorInfo = indicatorInfo }
         if let indicatorSize { preferences.indicatorSize = indicatorSize }
         if let isAutoAppearanceMode { preferences.isAutoAppearanceMode = isAutoAppearanceMode }

@@ -18,8 +18,9 @@ class InputSourceVM: ObservableObject {
     /// Tracks the input source we're programmatically switching to.
     /// Used to filter out system notifications that result from our own TISSelectInputSource
     /// calls, preventing feedback loops in IndicatorVM. Set before the switch, cleared
-    /// after the notification is expected to have arrived.
+    /// after 500ms via programmaticTargetClearWorkItem.
     private var programmaticTarget: InputSource?
+    private var programmaticTargetClearWorkItem: DispatchWorkItem?
 
     private var cancelBag = CancelBag()
 
@@ -49,11 +50,19 @@ class InputSourceVM: ObservableObject {
                     )
                 }
             }
-            .flatMapLatest({ _ in
+            .flatMapLatest({ [weak self] _ in
+                // Set a timer to clear the programmatic target after 500ms.
+                // This ensures system notifications from our switch are filtered
+                // for the full settling period, not just the first emission.
+                self?.programmaticTargetClearWorkItem?.cancel()
+                let workItem = DispatchWorkItem { [weak self] in
+                    self?.programmaticTarget = nil
+                }
+                self?.programmaticTargetClearWorkItem = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+
                 // Multiple checkpoints after switch to ensure the change is detected.
-                // CJKV input sources may take longer to settle, so we check at 50ms,
-                // 150ms, and 300ms instead of a single 1-second delay.
-                Publishers.MergeMany([
+                return Publishers.MergeMany([
                     Just(())
                         .eraseToAnyPublisher(),
                     Timer
@@ -73,8 +82,6 @@ class InputSourceVM: ObservableObject {
             })
             .sink { [weak self] _ in
                 self?.inputSourceChangesSubject.send(())
-                // Clear target after all checkpoints to stop filtering
-                self?.programmaticTarget = nil
             }
             .store(in: cancelBag)
     }
