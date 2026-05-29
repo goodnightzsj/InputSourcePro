@@ -98,6 +98,24 @@ struct GeneralSettingsView: View {
                 }
 
                 Group {
+                    // #86: Configurable indicator hide delay
+                    SettingsSection(title: "Indicator Display") {
+                        HStack {
+                                    Text("Hide Delay (seconds)".i18n())
+                                    Spacer()
+                                    Slider(
+                                        value: $preferencesVM.preferences.indicatorHideDelay,
+                                        in: 0.2...5.0,
+                                        step: 0.1
+                                    )
+                                    .frame(width: 200)
+                                    Text(String(format: "%.1fs", preferencesVM.preferences.indicatorHideDelay))
+                                        .frame(width: 35)
+                                        .monospacedDigit()
+                                }
+                                .padding()
+                    }
+
                     SettingsSection(title: "Indicator Triggers") {
                         HStack {
                             Toggle("", isOn: $preferencesVM.preferences.isActiveWhenLongpressLeftMouse)

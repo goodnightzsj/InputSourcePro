@@ -23,9 +23,10 @@ extension IndicatorWindowController {
                     .compactMap { $0 }
                     .first()
                     .tap { self.moveIndicator(position: $0) }
-                    .flatMapLatest { _ -> AnyPublisher<Bool, Never> in
-                        Publishers.Merge(
-                            Timer.delay(seconds: 1).mapToVoid(),
+                    .flatMapLatest { [weak self] _ -> AnyPublisher<Bool, Never> in
+                        let hideDelay = self?.preferencesVM.preferences.indicatorHideDelay ?? 1.0
+                        return Publishers.Merge(
+                            Timer.delay(seconds: hideDelay).mapToVoid(),
                             // hover event
                             self.indicatorVC.hoverableView.hoverdPublisher
                                 .filter { $0 }

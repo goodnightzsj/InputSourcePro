@@ -272,6 +272,7 @@ struct Preferences {
 
         static let isRestorePreviouslyUsedInputSource = "isRestorePreviouslyUsedInputSource"
         static let isGlobalForceEnglishPunctuation = "isGlobalForceEnglishPunctuation"
+        static let indicatorHideDelay = "indicatorHideDelay"
 
         static let isEnableURLSwitchForSafari = "isEnableURLSwitchForSafari"
         static let isEnableURLSwitchForSafariTechnologyPreview = "isEnableURLSwitchForSafariTechnologyPreview"
@@ -375,6 +376,10 @@ struct Preferences {
     // #109: Global force English punctuation for all apps
     @UserDefault(Preferences.Key.isGlobalForceEnglishPunctuation)
     var isGlobalForceEnglishPunctuation = false
+
+    // #86: Configurable indicator hide delay (seconds)
+    @UserDefault(Preferences.Key.indicatorHideDelay)
+    var indicatorHideDelay: Double = 1.0
 
     @UserDefault(Preferences.Key.isFunctionKeysEnabled)
     var isFunctionKeysEnabled = FKeyMode.defaultIsFunctionKeysEnabled()
