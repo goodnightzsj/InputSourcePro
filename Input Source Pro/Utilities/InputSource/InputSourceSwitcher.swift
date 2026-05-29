@@ -346,11 +346,12 @@ enum InputSourceSwitcher {
         suppressTemporaryInputWindowActivation()
         isShowingTemporaryInputWindow = true
 
-        // Use orderFrontRegardless instead of NSApp.activate to avoid:
+        // Use orderFrontRegardless + makeKey instead of NSApp.activate to avoid:
         // - #80: Triggering emoji dialog when switching to WeChat
         // - #103/#94: Fullscreen lag and screen tearing
         // - Focus stealing from the current application
         window.orderFrontRegardless()
+        window.makeKey()
         window.makeFirstResponder(textView)
 
         scheduleWorkItem(after: temporaryInputWindowDuration) {
