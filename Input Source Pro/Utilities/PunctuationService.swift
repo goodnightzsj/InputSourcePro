@@ -15,7 +15,7 @@ class PunctuationService: ObservableObject {
     // Performance optimization: Cache input source state to reduce system calls
     private var cachedInputSource: InputSource?
     private var inputSourceCacheTime: TimeInterval = 0
-    private let inputSourceCacheTimeout: TimeInterval = 0.5 // Cache for 500ms
+    private let inputSourceCacheTimeout: TimeInterval = 0.1 // Cache for 100ms (was 500ms, caused #95)
     
     private let cjkvToEnglishPunctuationMap: [UInt16: (normal: String?, shifted: String?)] = [
         UInt16(kVK_ANSI_Grave): ("`", "~"),
