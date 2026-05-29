@@ -239,7 +239,7 @@ enum InputSourceSwitcher {
             return true
         } else {
             logger.debug { "Accessibility permission missing; cannot post input source shortcut." }
-            return true
+            return false
         }
     }
 
@@ -336,7 +336,7 @@ enum InputSourceSwitcher {
         window.isReleasedWhenClosed = false
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.alphaValue = 0.01
+        window.alphaValue = 0
         window.hasShadow = false
         window.ignoresMouseEvents = true
         window.level = .screenSaver
@@ -346,8 +346,11 @@ enum InputSourceSwitcher {
         suppressTemporaryInputWindowActivation()
         isShowingTemporaryInputWindow = true
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Use orderFrontRegardless instead of NSApp.activate to avoid:
+        // - #80: Triggering emoji dialog when switching to WeChat
+        // - #103/#94: Fullscreen lag and screen tearing
+        // - Focus stealing from the current application
+        window.orderFrontRegardless()
         window.makeFirstResponder(textView)
 
         scheduleWorkItem(after: temporaryInputWindowDuration) {

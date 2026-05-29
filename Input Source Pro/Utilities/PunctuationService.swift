@@ -231,7 +231,12 @@ class PunctuationService: ObservableObject {
 
     func shouldEnableForApp(_ app: NSRunningApplication) -> Bool {
         guard let preferencesVM = preferencesVM else { return false }
-        
+
+        // #109: Global force English punctuation overrides per-app setting
+        if preferencesVM.preferences.isGlobalForceEnglishPunctuation {
+            return true
+        }
+
         let appRule = preferencesVM.getAppCustomization(app: app)
         return appRule?.shouldForceEnglishPunctuation == true
     }

@@ -265,6 +265,7 @@ struct Preferences {
         static let isActiveWhenSwitchInputSource = "isActiveWhenSwitchInputSource"
 
         static let isRestorePreviouslyUsedInputSource = "isRestorePreviouslyUsedInputSource"
+        static let isGlobalForceEnglishPunctuation = "isGlobalForceEnglishPunctuation"
 
         static let isEnableURLSwitchForSafari = "isEnableURLSwitchForSafari"
         static let isEnableURLSwitchForSafariTechnologyPreview = "isEnableURLSwitchForSafariTechnologyPreview"
@@ -363,6 +364,10 @@ struct Preferences {
 
     @UserDefault(Preferences.Key.isRestorePreviouslyUsedInputSource)
     var isRestorePreviouslyUsedInputSource = false
+
+    // #109: Global force English punctuation for all apps
+    @UserDefault(Preferences.Key.isGlobalForceEnglishPunctuation)
+    var isGlobalForceEnglishPunctuation = false
 
     @UserDefault(Preferences.Key.isFunctionKeysEnabled)
     var isFunctionKeysEnabled = FKeyMode.defaultIsFunctionKeysEnabled()

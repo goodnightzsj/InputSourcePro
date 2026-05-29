@@ -85,6 +85,18 @@ struct GeneralSettingsView: View {
                     .padding()
                 }
 
+                // #109: Global force English punctuation
+                SettingsSection(title: "Punctuation") {
+                    HStack {
+                        Toggle("", isOn: $preferencesVM.preferences.isGlobalForceEnglishPunctuation)
+
+                        Text("Force English Punctuation for All Apps".i18n())
+
+                        Spacer()
+                    }
+                    .padding()
+                }
+
                 Group {
                     SettingsSection(title: "Indicator Triggers") {
                         HStack {

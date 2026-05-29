@@ -20,6 +20,8 @@ private let floatingAppIdentifier: [(
     ("com.1password.1password", 1000, true, nil),
     ("com.eusoft.eudic.LightPeek", 1000, true, nil),
     ("com.contextsformac.Contexts", 1000, true, { $0.windowLayer != 20 }),
+    // #104: ChatGPT floating window (Opt+Space) doesn't trigger normal app activation
+    ("com.openai.chatgpt", 30, false, nil),
 ]
 
 extension NSApplication {

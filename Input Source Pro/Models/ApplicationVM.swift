@@ -14,12 +14,18 @@ final class ApplicationVM: ObservableObject {
     let cancelBag = CancelBag()
     let preferencesVM: PreferencesVM
 
+    /// Caches the last resolved browser AppKind per bundle identifier.
+    /// When switching back to a browser, the focused tab URL may take up to 1 second
+    /// to resolve via AX. This cache allows returning the previous context immediately
+    /// instead of falling back to `.normal` and losing the per-website input source rule.
+    private var lastResolvedBrowserAppKinds = [String: AppKind]()
+
     lazy var windowAXNotificationPublisher = ApplicationVM
         .createWindowAXNotificationPublisher(preferencesVM: preferencesVM)
 
     init(preferencesVM: PreferencesVM) {
         self.preferencesVM = preferencesVM
-        appKind = .from(NSWorkspace.shared.frontmostApplication, preferencesVM: preferencesVM)
+        appKind = resolveAppKind(for: NSWorkspace.shared.frontmostApplication)
 
         activateAccessibilitiesForCurrentApp()
         watchApplicationChange()
@@ -62,10 +68,14 @@ extension ApplicationVM {
                 else { return Empty().eraseToAnyPublisher() }
 
                 guard NSApplication.isBrowser(app)
-                else { return Just(.from(app, preferencesVM: preferencesVM)).eraseToAnyPublisher() }
+                else {
+                    return Just(app)
+                        .compactMap { [weak self] in self?.resolveAppKind(for: $0) }
+                        .eraseToAnyPublisher()
+                }
 
                 return Timer
-                    .interval(seconds: 1)
+                    .interval(seconds: 0.05)
                     .prepend(Date())
                     .compactMap { _ in app.focusedUIElement(preferencesVM: preferencesVM) }
                     .first()
@@ -79,7 +89,7 @@ extension ApplicationVM {
                             .map { event in event.runningApp }
                     }
                     .prepend(app)
-                    .compactMap { app -> AppKind? in .from(app, preferencesVM: preferencesVM) }
+                    .compactMap { [weak self] in self?.resolveAppKind(for: $0) }
                     .eraseToAnyPublisher()
             }
             .removeDuplicates(by: { $0.isSameAppOrWebsite(with: $1, detectAddressBar: true) })
@@ -102,5 +112,31 @@ extension ApplicationVM {
             .filter { [weak self] in self?.preferencesVM.isHideIndicator($0) != true }
             .sink { $0.getApp().activateAccessibilities() }
             .store(in: cancelBag)
+    }
+
+    private func resolveAppKind(for app: NSRunningApplication?) -> AppKind? {
+        guard let app else { return nil }
+
+        let resolved = AppKind.from(app, preferencesVM: preferencesVM)
+
+        if let browserInfo = resolved.getBrowserInfo(),
+           !browserInfo.isFocusedOnAddressBar,
+           browserInfo.url != .newtab,
+           let bundleIdentifier = app.bundleIdentifier
+        {
+            lastResolvedBrowserAppKinds[bundleIdentifier] = resolved
+            return resolved
+        }
+
+        guard preferencesVM.isBrowserAndEnabled(app),
+              let bundleIdentifier = app.bundleIdentifier,
+              case .normal = resolved,
+              let fallback = lastResolvedBrowserAppKinds[bundleIdentifier]
+        else {
+            return resolved
+        }
+
+        logger.debug { "Reusing cached browser context for \(bundleIdentifier) while waiting for the focused tab to resolve." }
+        return fallback
     }
 }
