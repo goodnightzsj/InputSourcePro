@@ -98,22 +98,33 @@ struct GeneralSettingsView: View {
                 }
 
                 Group {
+                    // #57: One-click hide all indicators
                     // #86: Configurable indicator hide delay
                     SettingsSection(title: "Indicator Display") {
                         HStack {
-                                    Text("Hide Delay (seconds)".i18n())
-                                    Spacer()
-                                    Slider(
-                                        value: $preferencesVM.preferences.indicatorHideDelay,
-                                        in: 0.2...5.0,
-                                        step: 0.1
-                                    )
-                                    .frame(width: 200)
-                                    Text(String(format: "%.1fs", preferencesVM.preferences.indicatorHideDelay))
-                                        .frame(width: 35)
-                                        .monospacedDigit()
-                                }
-                                .padding()
+                            Toggle("", isOn: $preferencesVM.preferences.isHideAllIndicators)
+                            Text("Hide All Indicators".i18n())
+                            Spacer()
+                        }
+                        .padding()
+                        .border(width: 1, edges: [.bottom], color: NSColor.border2.color)
+
+                        HStack {
+                            Text("Hide Delay (seconds)".i18n())
+                            Spacer()
+                            Slider(
+                                value: $preferencesVM.preferences.indicatorHideDelay,
+                                in: 0.2...5.0,
+                                step: 0.1
+                            )
+                            .frame(width: 200)
+                            .disabled(preferencesVM.preferences.isHideAllIndicators)
+                            Text(String(format: "%.1fs", preferencesVM.preferences.indicatorHideDelay))
+                                .frame(width: 35)
+                                .monospacedDigit()
+                                .opacity(preferencesVM.preferences.isHideAllIndicators ? 0.5 : 1)
+                        }
+                        .padding()
                     }
 
                     SettingsSection(title: "Indicator Triggers") {

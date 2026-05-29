@@ -55,6 +55,10 @@ class IndicatorWindowController: FloatWindowController {
                 let inputSource = params.inputSource
 
                 guard let self = self else { return Empty().eraseToAnyPublisher() }
+                // #57: Global hide all indicators toggle
+                guard !preferencesVM.preferences.isHideAllIndicators else {
+                    return self.justHidePublisher()
+                }
                 guard let appKind = self.applicationVM.appKind,
                       !event.isJustHide,
                       !preferencesVM.isHideIndicator(appKind)

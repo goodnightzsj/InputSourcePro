@@ -273,6 +273,7 @@ struct Preferences {
         static let isRestorePreviouslyUsedInputSource = "isRestorePreviouslyUsedInputSource"
         static let isGlobalForceEnglishPunctuation = "isGlobalForceEnglishPunctuation"
         static let indicatorHideDelay = "indicatorHideDelay"
+        static let isHideAllIndicators = "isHideAllIndicators"
 
         static let isEnableURLSwitchForSafari = "isEnableURLSwitchForSafari"
         static let isEnableURLSwitchForSafariTechnologyPreview = "isEnableURLSwitchForSafariTechnologyPreview"
@@ -380,6 +381,10 @@ struct Preferences {
     // #86: Configurable indicator hide delay (seconds)
     @UserDefault(Preferences.Key.indicatorHideDelay)
     var indicatorHideDelay: Double = 1.0
+
+    // #57: One-click hide all indicators
+    @UserDefault(Preferences.Key.isHideAllIndicators)
+    var isHideAllIndicators = false
 
     @UserDefault(Preferences.Key.isFunctionKeysEnabled)
     var isFunctionKeysEnabled = FKeyMode.defaultIsFunctionKeysEnabled()
