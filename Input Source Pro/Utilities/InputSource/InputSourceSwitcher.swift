@@ -297,6 +297,7 @@ enum InputSourceSwitcher {
 
     private static func cancelPendingWorkItems() {
         syntheticEventEndTime = 0
+        lastCJKVSwitchTime = 0
         closeTemporaryInputWindow(restorePreviousApplication: true)
         guard !pendingWorkItems.isEmpty else { return }
         pendingWorkItems.forEach { $0.cancel() }
