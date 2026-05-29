@@ -24,7 +24,7 @@ extension IndicatorWindowController {
                     .first()
                     .tap { self.moveIndicator(position: $0) }
                     .flatMapLatest { [weak self] _ -> AnyPublisher<Bool, Never> in
-                        guard let self else { return Empty().eraseToAnyPublisher() }
+                        guard let self = self else { return Empty().eraseToAnyPublisher() }
                         let hideDelay = self.preferencesVM.preferences.indicatorHideDelay
                         return Publishers.Merge(
                             Timer.delay(seconds: hideDelay).mapToVoid(),

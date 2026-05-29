@@ -67,7 +67,7 @@ final class PreferencesVM: ObservableObject {
             .dropFirst()
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
-                guard let self, !self.isLoadingSettingsFromFile else { return }
+                guard let self = self, !self.isLoadingSettingsFromFile else { return }
                 self.saveSettingsToFilePath()
             }
             .store(in: cancelBag)

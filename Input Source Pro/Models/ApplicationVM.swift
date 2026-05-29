@@ -107,7 +107,7 @@ extension ApplicationVM {
         // Evict cached browser context when a browser app is closed to prevent unbounded growth
         $appsDiff
             .sink { [weak self] diff in
-                guard let self else { return }
+                guard let self = self else { return }
                 for app in diff.removed {
                     if let bundleId = app.bundleIdentifier {
                         self.lastResolvedBrowserAppKinds.removeValue(forKey: bundleId)
