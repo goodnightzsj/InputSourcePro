@@ -241,6 +241,19 @@ extension IndicatorVM {
                 case .start:
                     return state
                 case let .appChanged(appKind):
+                    // #98: Skip input source switch if only the address bar focus changed
+                    // but the URL is the same (e.g., clicking between Safari address bar
+                    // and page content). This prevents unnecessary input source flickering.
+                    if let prevAppKind = state.appKind,
+                       appKind.isSameAppOrWebsite(with: prevAppKind, detectAddressBar: false)
+                    {
+                        return updateState(
+                            appKind: appKind,
+                            inputSource: state.inputSource,
+                            inputSourceChangeReason: state.inputSourceChangeReason
+                        )
+                    }
+
                     if let status = preferencesVM.getAppAutoSwitchKeyboard(appKind) {
                         inputSourceVM.select(inputSource: status.inputSource, app: appKind.getApp())
 
