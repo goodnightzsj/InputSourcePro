@@ -15,18 +15,10 @@ jobs:
 
       - name: Build App (Debug)
         run: |
+          set -o pipefail
           xcodebuild build \
             -project Input\ Source\ Pro.xcodeproj/ \
             -scheme "Input Source Pro" \
             -destination "generic/platform=macOS" \
             CODE_SIGNING_ALLOWED=NO \
             | tail -20
-
-      - name: Check Build Result
-        run: |
-          if [ $? -eq 0 ]; then
-            echo "✅ Build succeeded"
-          else
-            echo "❌ Build failed"
-            exit 1
-          fi

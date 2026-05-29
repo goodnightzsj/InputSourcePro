@@ -20,6 +20,9 @@ final class PreferencesVM: ObservableObject {
 
     var cancelBag = CancelBag()
 
+    /// Suppresses auto-save to settings file during initial load to prevent write-back cycle.
+    private var isLoadingSettingsFromFile = false
+
     var appKeyboardCache = AppKeyboardCache()
 
     let container: NSPersistentContainer
@@ -63,7 +66,10 @@ final class PreferencesVM: ObservableObject {
         $preferences
             .dropFirst()
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in self?.saveSettingsToFilePath() }
+            .sink { [weak self] _ in
+                guard let self, !self.isLoadingSettingsFromFile else { return }
+                self.saveSettingsToFilePath()
+            }
             .store(in: cancelBag)
 
         if preferences.prevInstalledBuildVersion == 0 {
@@ -79,7 +85,9 @@ final class PreferencesVM: ObservableObject {
         watchKeyboardConfigsChange()
 
         // #71: Load settings from file if path is configured
+        isLoadingSettingsFromFile = true
         loadSettingsFromFilePath()
+        isLoadingSettingsFromFile = false
     }
 
     // MARK: - #71: Settings file sync for dotfiles
