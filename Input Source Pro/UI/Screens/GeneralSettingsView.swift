@@ -221,6 +221,16 @@ struct GeneralSettingsView: View {
                         }
                         .padding()
                         .border(width: 1, edges: [.bottom], color: NSColor.border2.color)
+
+                        // #44: Show input source name in menu bar
+                        HStack {
+                            Toggle("", isOn: $preferencesVM.preferences.isShowInputSourceNameInMenuBar)
+                                .disabled(!preferencesVM.preferences.isShowIconInMenuBar)
+                            Text("Show Input Source Name in Menu Bar".i18n())
+                            Spacer()
+                        }
+                        .padding()
+                        .border(width: 1, edges: [.bottom], color: NSColor.border2.color)
                     }
 
                     SettingsSection(title: "") {

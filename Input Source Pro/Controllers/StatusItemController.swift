@@ -181,7 +181,7 @@ class StatusItemController {
                 if isShow {
                     return AnyPublisher.create { [unowned self] _ in
                         statusItem = NSStatusBar.system.statusItem(
-                            withLength: NSStatusItem.squareLength
+                            withLength: NSStatusItem.variableLength
                         )
 
                         statusItem?.button?.image = NSImage(named: "MenuBarIcon")
@@ -189,6 +189,8 @@ class StatusItemController {
                         statusItem?.button?.image?.isTemplate = true
                         statusItem?.button?.target = self
                         statusItem?.button?.action = #selector(self.displayMenu)
+
+                        self.updateMenuBarTitle()
 
                         return AnyCancellable { [unowned self] in
                             self.statusItem = nil
@@ -201,6 +203,19 @@ class StatusItemController {
             .switchToLatest()
             .sink {}
             .store(in: cancelBag)
+
+        // #44: Update menu bar title when input source changes
+        indicatorVM.$state
+            .map(\.inputSource)
+            .removeDuplicates()
+            .sink { [weak self] _ in self?.updateMenuBarTitle() }
+            .store(in: cancelBag)
+
+        preferencesVM.$preferences
+            .map(\.isShowInputSourceNameInMenuBar)
+            .removeDuplicates()
+            .sink { [weak self] _ in self?.updateMenuBarTitle() }
+            .store(in: cancelBag)
     }
 
     @objc func displayMenu() {
@@ -208,6 +223,18 @@ class StatusItemController {
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
         statusItem?.menu = nil
+    }
+
+    // #44: Show input source name in menu bar
+    private func updateMenuBarTitle() {
+        guard let button = statusItem?.button else { return }
+
+        if preferencesVM.preferences.isShowInputSourceNameInMenuBar {
+            let inputSource = indicatorVM.state.inputSource
+            button.title = " " + inputSource.name
+        } else {
+            button.title = ""
+        }
     }
 
     @objc func openPreferences() {

@@ -318,6 +318,7 @@ struct Preferences {
         static let indicatorHideDelay = "indicatorHideDelay"
         static let isHideAllIndicators = "isHideAllIndicators"
         static let settingsFilePath = "settingsFilePath"
+        static let isShowInputSourceNameInMenuBar = "isShowInputSourceNameInMenuBar"
 
         static let isEnableURLSwitchForSafari = "isEnableURLSwitchForSafari"
         static let isEnableURLSwitchForSafariTechnologyPreview = "isEnableURLSwitchForSafariTechnologyPreview"
@@ -433,6 +434,10 @@ struct Preferences {
     // #71: Settings file path for dotfiles sync
     @UserDefault(Preferences.Key.settingsFilePath)
     var settingsFilePath: String = ""
+
+    // #44: Show input source name in menu bar
+    @UserDefault(Preferences.Key.isShowInputSourceNameInMenuBar)
+    var isShowInputSourceNameInMenuBar = false
 
     @UserDefault(Preferences.Key.isFunctionKeysEnabled)
     var isFunctionKeysEnabled = FKeyMode.defaultIsFunctionKeysEnabled()
