@@ -194,6 +194,17 @@ struct GeneralSettingsView: View {
                     SettingsSection(title: "System") {
                         EnhancedModeToggle()
                             .border(width: 1, edges: [.bottom], color: NSColor.border2.color)
+
+                        // #71: Settings file path for dotfiles sync
+                        HStack {
+                            Text("Settings File Path".i18n())
+                            Spacer()
+                            TextField("~/.config/inputsourcepro/settings.json", text: $preferencesVM.preferences.settingsFilePath)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 250)
+                        }
+                        .padding()
+                        .border(width: 1, edges: [.bottom], color: NSColor.border2.color)
                         
                         HStack {
                             Toggle("", isOn: $preferencesVM.preferences.isLaunchAtLogin)

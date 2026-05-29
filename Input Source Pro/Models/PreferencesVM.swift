@@ -59,6 +59,13 @@ final class PreferencesVM: ObservableObject {
             .sink { LaunchAtLogin.isEnabled = $0 }
             .store(in: cancelBag)
 
+        // #71: Auto-save settings to file when they change
+        $preferences
+            .dropFirst()
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in self?.saveSettingsToFilePath() }
+            .store(in: cancelBag)
+
         if preferences.prevInstalledBuildVersion == 0 {
             for filterApp in filterApps(NSWorkspace.shared.runningApplications) {
                 addAppCustomization(filterApp)
@@ -70,6 +77,42 @@ final class PreferencesVM: ObservableObject {
         migrateShortcutPreferencesIfNeed()
         migrateBoutiqueIfNeed()
         watchKeyboardConfigsChange()
+
+        // #71: Load settings from file if path is configured
+        loadSettingsFromFilePath()
+    }
+
+    // MARK: - #71: Settings file sync for dotfiles
+
+    /// Load settings from the configured file path on launch
+    private func loadSettingsFromFilePath() {
+        let path = preferences.settingsFilePath
+        guard !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+        guard FileManager.default.fileExists(atPath: path) else { return }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let backup = try JSONDecoder().decode(SettingsBackup.self, from: data)
+            backup.apply(to: &preferences)
+        } catch {
+            // Silently fail if the file can't be read
+        }
+    }
+
+    /// Save current settings to the configured file path
+    func saveSettingsToFilePath() {
+        let path = preferences.settingsFilePath
+        guard !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+
+        do {
+            let backup = SettingsBackup(preferences)
+            let data = try JSONEncoder().encode(backup)
+            try data.write(to: url, options: .atomic)
+        } catch {
+            // Silently fail if the file can't be written
+        }
     }
 
     func update(_ change: (inout Preferences) -> Void) {
@@ -274,6 +317,7 @@ struct Preferences {
         static let isGlobalForceEnglishPunctuation = "isGlobalForceEnglishPunctuation"
         static let indicatorHideDelay = "indicatorHideDelay"
         static let isHideAllIndicators = "isHideAllIndicators"
+        static let settingsFilePath = "settingsFilePath"
 
         static let isEnableURLSwitchForSafari = "isEnableURLSwitchForSafari"
         static let isEnableURLSwitchForSafariTechnologyPreview = "isEnableURLSwitchForSafariTechnologyPreview"
@@ -385,6 +429,10 @@ struct Preferences {
     // #57: One-click hide all indicators
     @UserDefault(Preferences.Key.isHideAllIndicators)
     var isHideAllIndicators = false
+
+    // #71: Settings file path for dotfiles sync
+    @UserDefault(Preferences.Key.settingsFilePath)
+    var settingsFilePath: String = ""
 
     @UserDefault(Preferences.Key.isFunctionKeysEnabled)
     var isFunctionKeysEnabled = FKeyMode.defaultIsFunctionKeysEnabled()
