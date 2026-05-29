@@ -35,6 +35,11 @@ enum InputSourceSwitcher {
 
     private static let logger = ISPLogger(category: String(describing: InputSourceSwitcher.self))
     private static var pendingWorkItems: [DispatchWorkItem] = []
+    /// Minimum interval between CJKV input source switches to prevent IMKInputSession
+    /// deadlocks in Chromium-based browsers (#92, #15). Rapid TISSelectInputSource calls
+    /// for CJKV sources can trigger macOS-level deadlocks.
+    private static let cjkvSwitchDebounceInterval: TimeInterval = 0.15
+    private static var lastCJKVSwitchTime: TimeInterval = 0
     private static var temporaryInputWindow: NSWindow?
     private static var temporaryInputWindowPreviousApplication: NSRunningApplication?
     private static let temporaryInputWindowDuration: TimeInterval = 0.08
@@ -171,6 +176,18 @@ enum InputSourceSwitcher {
             selectInputSource(tisTarget, reason: "target")
             return
         }
+
+        // #92/#15: Debounce rapid CJKV switches to prevent IMKInputSession deadlocks
+        let now = ProcessInfo.processInfo.systemUptime
+        let elapsed = now - lastCJKVSwitchTime
+        if elapsed < cjkvSwitchDebounceInterval {
+            let delay = cjkvSwitchDebounceInterval - elapsed
+            scheduleWorkItem(after: delay) {
+                switchToTarget(target, tisTarget: tisTarget, cJKVFixStrategy: cJKVFixStrategy)
+            }
+            return
+        }
+        lastCJKVSwitchTime = now
 
         switch cJKVFixStrategy {
         case .temporaryInputWindow:

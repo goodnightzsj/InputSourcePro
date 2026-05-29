@@ -103,7 +103,7 @@ final class IndicatorVM: ObservableObject {
             .compactMap { $0 }
             .sink { [weak self] appKind in
                 guard let self = self else { return }
-                
+
                 let app = appKind.getApp()
                 if self.punctuationService.shouldEnableForApp(app) {
                     self.logger.debug { "Enabling English punctuation for app: \(app.localizedName ?? app.bundleIdentifier ?? "Unknown")" }
@@ -111,6 +111,14 @@ final class IndicatorVM: ObservableObject {
                 } else {
                     self.punctuationService.disable()
                 }
+            }
+            .store(in: cancelBag)
+
+        // #102: Invalidate punctuation cache on input source change so that
+        // punctuation replacement immediately reflects the new input source
+        inputSourceVM.inputSourceChangesPublisher
+            .sink { [weak self] _ in
+                self?.punctuationService.invalidateInputSourceCache()
             }
             .store(in: cancelBag)
     }

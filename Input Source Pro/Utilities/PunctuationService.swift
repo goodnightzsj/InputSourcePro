@@ -241,6 +241,13 @@ class PunctuationService: ObservableObject {
         return appRule?.shouldForceEnglishPunctuation == true
     }
     
+    /// Invalidate the cached input source. Called when input source changes to ensure
+    /// punctuation replacement uses the correct input source state immediately.
+    func invalidateInputSourceCache() {
+        cachedInputSource = nil
+        inputSourceCacheTime = 0
+    }
+
     /// Get current input source with caching to improve performance during rapid typing
     private func getCachedCurrentInputSource() -> InputSource {
         let currentTime = CACurrentMediaTime()
