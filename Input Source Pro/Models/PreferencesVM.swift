@@ -96,7 +96,9 @@ final class PreferencesVM: ObservableObject {
             let backup = try JSONDecoder().decode(SettingsBackup.self, from: data)
             backup.apply(to: &preferences)
         } catch {
-            // Silently fail if the file can't be read
+            // Backup corrupted file before it gets overwritten
+            let backupPath = path + ".corrupted.\(Int(Date().timeIntervalSince1970))"
+            try? FileManager.default.copyItem(atPath: path, toPath: backupPath)
         }
     }
 
@@ -106,12 +108,18 @@ final class PreferencesVM: ObservableObject {
         guard !path.isEmpty else { return }
         let url = URL(fileURLWithPath: path)
 
+        // Auto-create parent directory if needed
+        let parentDir = url.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: parentDir.path) {
+            try? FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
+
         do {
             let backup = SettingsBackup(preferences)
             let data = try JSONEncoder().encode(backup)
             try data.write(to: url, options: .atomic)
         } catch {
-            // Silently fail if the file can't be written
+            // Write failed - will retry on next settings change
         }
     }
 
