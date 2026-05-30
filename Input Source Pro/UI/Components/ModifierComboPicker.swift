@@ -16,6 +16,8 @@ struct ModifierComboPicker: View {
             return 2
         case .leftCommand, .rightCommand:
             return 3
+        case .capsLock:
+            return 4
         }
     }
 
@@ -37,6 +39,8 @@ struct ModifierComboPicker: View {
             return .rightCommand
         case .rightCommand:
             return .leftCommand
+        case .capsLock:
+            return .capsLock
         }
     }
 
