@@ -1,0 +1,70 @@
+name: Release (Debug)
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version/tag for the release (e.g. 2.10.2)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release_debug:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: echo "version=${{ github.event.inputs.version || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build App (Debug, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Input\ Source\ Pro.xcodeproj/ \
+            -scheme "Input Source Pro" \
+            -configuration Debug \
+            -destination "generic/platform=macOS" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee /tmp/build.log; status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then
+            echo "::error::xcodebuild failed (exit code $status). Last 50 lines:"
+            tail -50 /tmp/build.log
+            exit $status
+          fi
+
+      - name: Package DMG (unsigned)
+        run: |
+          mkdir -p dist
+          APP="build/Build/Products/Debug/Input Source Pro.app"
+          if [ ! -d "$APP" ]; then
+            echo "::error::built .app not found at $APP"
+            exit 1
+          fi
+          # create-dmg exits non-zero when it cannot code-sign (expected for an unsigned
+          # debug build); tolerate that and verify the DMG was still produced.
+          npx --yes create-dmg "$APP" dist/ || true
+          DMG=$(find dist -name '*.dmg' | head -1)
+          if [ -z "$DMG" ]; then
+            echo "::error::create-dmg did not produce a DMG"
+            exit 1
+          fi
+          mv "$DMG" "dist/Input Source Pro ${{ steps.ver.outputs.version }}.dmg"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.version }}" \
+            "dist/Input Source Pro ${{ steps.ver.outputs.version }}.dmg" \
+            --title "${{ steps.ver.outputs.version }}" \
+            --notes "Debug build (unsigned, not notarized). On first launch macOS Gatekeeper will warn it is from an unidentified developer — right-click the app and choose Open, or run: xattr -dr com.apple.quarantine \"/Applications/Input Source Pro.app\""
