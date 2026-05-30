@@ -29,6 +29,7 @@ final class IndicatorVM: ObservableObject {
     private(set) lazy var activateEventPublisher = Publishers.MergeMany([
         longMouseDownPublisher(),
         stateChangesPublisher(),
+        hideAllIndicatorsPublisher(),
     ])
     .share()
 

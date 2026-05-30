@@ -23,6 +23,14 @@ final class PreferencesVM: ObservableObject {
     /// Suppresses auto-save to settings file during initial load to prevent write-back cycle.
     private var isLoadingSettingsFromFile = false
 
+    /// Snapshot of the last settings payload synced to/from the file. The debounced auto-save
+    /// skips writing when the current payload matches this, which prevents the launch-time
+    /// write-back (the `isLoadingSettingsFromFile` flag alone cannot — the debounce outlives it).
+    private var lastSyncedSettingsData: Data?
+
+    /// Serial queue so settings-file writes run off the main thread and stay ordered.
+    private let settingsFileQueue = DispatchQueue(label: "com.inputsourcepro.settings-file-sync", qos: .utility)
+
     var appKeyboardCache = AppKeyboardCache()
 
     let container: NSPersistentContainer
@@ -96,17 +104,20 @@ final class PreferencesVM: ObservableObject {
     private func loadSettingsFromFilePath() {
         let path = preferences.settingsFilePath
         guard !path.isEmpty else { return }
-        let url = URL(fileURLWithPath: path)
-        guard FileManager.default.fileExists(atPath: path) else { return }
+        // Resolve symlinks so dotfiles setups (e.g. ~/.config/isp.json -> repo) read the real target.
+        let url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
 
         do {
             let data = try Data(contentsOf: url)
             let backup = try JSONDecoder().decode(SettingsBackupPreferences.self, from: data)
             backup.apply(to: &preferences)
+            // Snapshot the applied state so the debounced auto-save does not rewrite the file on launch.
+            lastSyncedSettingsData = try? encodeSettingsForSync()
         } catch {
-            // Backup corrupted file before it gets overwritten
-            let backupPath = path + ".corrupted.\(Int(Date().timeIntervalSince1970))"
-            try? FileManager.default.copyItem(atPath: path, toPath: backupPath)
+            // Back up the unreadable file before a future save can overwrite it.
+            let backupPath = url.path + ".corrupted.\(Int(Date().timeIntervalSince1970))"
+            try? FileManager.default.copyItem(atPath: url.path, toPath: backupPath)
         }
     }
 
@@ -114,21 +125,37 @@ final class PreferencesVM: ObservableObject {
     func saveSettingsToFilePath() {
         let path = preferences.settingsFilePath
         guard !path.isEmpty else { return }
-        let url = URL(fileURLWithPath: path)
 
-        // Auto-create parent directory if needed
+        guard let data = try? encodeSettingsForSync() else { return }
+
+        // Skip the write when nothing changed since the last sync — avoids rewriting the
+        // file (and churning its mtime / git status) on every launch and on no-op changes.
+        guard data != lastSyncedSettingsData else { return }
+        lastSyncedSettingsData = data
+
+        // Resolve symlinks so an atomic write replaces the link target, not the link itself.
+        let url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
         let parentDir = url.deletingLastPathComponent()
-        if !FileManager.default.fileExists(atPath: parentDir.path) {
-            try? FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
-        }
 
-        do {
-            let backup = SettingsBackupPreferences(preferences)
-            let data = try JSONEncoder().encode(backup)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            // Write failed - will retry on next settings change
+        settingsFileQueue.async {
+            if !FileManager.default.fileExists(atPath: parentDir.path) {
+                try? FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+            }
+            do {
+                try data.write(to: url, options: .atomic)
+            } catch {
+                // Write failed - clear the snapshot so the next change retries the write.
+                DispatchQueue.main.async { [weak self] in self?.lastSyncedSettingsData = nil }
+            }
         }
+    }
+
+    /// Canonical encoding of the synced subset of preferences. Stable (sorted keys, no timestamps),
+    /// so two encodings of equal preferences compare byte-equal.
+    private func encodeSettingsForSync() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(SettingsBackupPreferences(preferences))
     }
 
     func update(_ change: (inout Preferences) -> Void) {

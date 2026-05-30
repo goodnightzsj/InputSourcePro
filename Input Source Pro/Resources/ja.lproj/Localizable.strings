@@ -28,6 +28,7 @@
 "System" = "システム";
 "Launch at Login" = "ログイン時に起動";
 "Display Icon in Menu Bar" = "メニューバーにアイコンを表示";
+"Show Input Source Name in Menu Bar" = "メニューバーに入力ソース名を表示";
 "Enhanced Mode" = "拡張モード";
 "Enhanced Mode Description" = "拡張モードを有効にすると、より正確なプロンプトの位置やSpotlightのようなアプリでのサポートが向上します";
 "Enhanced Mode Permission Description" = "Input Source Proは**拡張モード**を有効にするためにアクセシビリティの権限が必要です。";

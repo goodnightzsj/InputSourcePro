@@ -28,6 +28,7 @@
 "System" = "시스템";
 "Launch at Login" = "로그인 시 시작";
 "Display Icon in Menu Bar" = "메뉴 바에 아이콘 표시";
+"Show Input Source Name in Menu Bar" = "메뉴 바에 입력 소스 이름 표시";
 "Enhanced Mode" = "고급 모드";
 "Enhanced Mode Description" = "고급 모드를 활성화하면 보다 정확한 프롬프트 위치와 Spotlight와 유사한 앱에 대한 더 나은 지원이 가능합니다";
 "Enhanced Mode Permission Description" = "Input Source Pro는 **고급 모드**를 활성화하기 위해 접근성 권한이 필요합니다.";

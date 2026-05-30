@@ -230,8 +230,10 @@ class StatusItemController {
         guard let button = statusItem?.button else { return }
 
         if preferencesVM.preferences.isShowInputSourceNameInMenuBar {
-            let inputSource = indicatorVM.state.inputSource
-            button.title = " " + inputSource.name
+            let name = indicatorVM.state.inputSource.name
+            let maxLength = 20
+            let display = name.count > maxLength ? String(name.prefix(maxLength)) + "…" : name
+            button.title = display.isEmpty ? "" : " " + display
         } else {
             button.title = ""
         }

@@ -28,6 +28,7 @@
 "System" = "系統";
 "Launch at Login" = "在登入時啟動";
 "Display Icon in Menu Bar" = "在選單列中顯示圖示";
+"Show Input Source Name in Menu Bar" = "在選單列中顯示輸入法名稱";
 "Support Spotlight-Like Apps" = "支援 Spotlight 類應用程式";
 "Enhanced Mode" = "增強模式";
 "Enhanced Mode Description" = "啟用增強模式讓輸入法提示位置更為準確，同時為 Spotlight 類應用程式提供更完善的支援";

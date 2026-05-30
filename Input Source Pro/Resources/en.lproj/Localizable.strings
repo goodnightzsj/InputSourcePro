@@ -28,6 +28,7 @@
 "System" = "System";
 "Launch at Login" = "Launch at Login";
 "Display Icon in Menu Bar" = "Display Icon in Menu Bar";
+"Show Input Source Name in Menu Bar" = "Show Input Source Name in Menu Bar";
 "Enhanced Mode" = "Enhanced Mode";
 "Enhanced Mode Description" = "Enabling Enhanced Mode allows for more accurate prompt locations and better support for Spotlight-like apps";
 "Enhanced Mode Permission Description" = "Input Source Pro needs Accessibility permission to enable **Enhanced Mode**.";

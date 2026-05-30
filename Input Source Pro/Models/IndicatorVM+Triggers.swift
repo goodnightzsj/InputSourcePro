@@ -32,6 +32,19 @@ extension IndicatorVM {
         }
     }
 
+    // #57: emit a hide event when "hide all indicators" is toggled ON at runtime,
+    // so a currently-visible indicator (including always-on) is torn down immediately
+    // instead of lingering until the next unrelated activate event.
+    func hideAllIndicatorsPublisher() -> AnyPublisher<ActivateEvent, Never> {
+        preferencesVM.$preferences
+            .map(\.isHideAllIndicators)
+            .removeDuplicates()
+            .dropFirst()
+            .filter { $0 }
+            .mapTo(ActivateEvent.justHide)
+            .eraseToAnyPublisher()
+    }
+
     func longMouseDownPublisher() -> AnyPublisher<ActivateEvent, Never> {
         AnyPublisher<NSEvent, Never>
             .create { observer in

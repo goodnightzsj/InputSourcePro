@@ -25,7 +25,8 @@ extension IndicatorWindowController {
                     .tap { self.moveIndicator(position: $0) }
                     .flatMapLatest { [weak self] _ -> AnyPublisher<Bool, Never> in
                         guard let self = self else { return Empty().eraseToAnyPublisher() }
-                        let hideDelay = self.preferencesVM.preferences.indicatorHideDelay
+                        // #86: clamp to the slider range — imported/edited backups can persist 0/negative/huge values
+                        let hideDelay = min(max(self.preferencesVM.preferences.indicatorHideDelay, 0.2), 5.0)
                         return Publishers.Merge(
                             Timer.delay(seconds: hideDelay).mapToVoid(),
                             // hover event

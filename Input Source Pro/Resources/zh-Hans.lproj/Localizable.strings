@@ -28,6 +28,7 @@
 "System" = "系统";
 "Launch at Login" = "在登录时启动";
 "Display Icon in Menu Bar" = "在菜单栏中显示图标";
+"Show Input Source Name in Menu Bar" = "在菜单栏中显示输入法名称";
 "Support Spotlight-Like Apps" = "支持「聚焦」类应用";
 "Enhanced Mode" = "增强模式";
 "Enhanced Mode Description" = "启用增强模式让输入法提示位置更为准确，同时为「聚焦」类应用提供更完善的支持";

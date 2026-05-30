@@ -267,9 +267,6 @@ final class ShortcutTriggerManager {
     private var lastEventTimestamp: TimeInterval = 0
     private var lastEventKeyCode: UInt16 = 0
 
-    /// #79: Track Caps Lock toggle state for press detection
-    private var capsLockState: Bool = false
-
     /// Reference to preferencesVM for permission watching
     private var preferencesVM: PreferencesVM
 
@@ -282,8 +279,6 @@ final class ShortcutTriggerManager {
     init(preferencesVM: PreferencesVM, doublePressInterval: TimeInterval = 0.35) {
         self.preferencesVM = preferencesVM
         self.doublePressInterval = doublePressInterval
-        // #79: Initialize Caps Lock state from current system state
-        capsLockState = NSEvent.modifierFlags.contains(.capsLock)
         watchPermissions()
     }
 
@@ -510,20 +505,19 @@ final class ShortcutTriggerManager {
 
         var flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
-        // #79: Caps Lock has toggle behavior. Detect press by keyCode change
-        // rather than flag state, since the flag reflects toggle state (on/off)
-        // not the physical key press/release.
-        let isKeyDown: Bool
+        // #79: Caps Lock is a locking toggle. The OS posts exactly one flagsChanged per
+        // physical press (reflecting the new on/off state) with NO separate release event.
+        // The original hold-to-press state machine never reached its release branch for
+        // Caps Lock, so the shortcut never fired and .capsLock got stuck in pressedModifiers.
+        // Treat each Caps Lock event as a complete tap (press immediately followed by release).
         if key == .capsLock {
-            // Caps Lock: detect press by checking if the toggle state changed
-            let wasCapsLockOn = capsLockState
-            let isCapsLockOn = flags.contains(.capsLock)
-            isKeyDown = wasCapsLockOn != isCapsLockOn
-            capsLockState = isCapsLockOn
-        } else {
-            flags.remove(.capsLock)
-            isKeyDown = flags.contains(key.modifierFlag)
+            lastKeyDownTimestamps[event.keyCode] = event.timestamp
+            handleCapsLockTap(at: event.timestamp)
+            return
         }
+
+        flags.remove(.capsLock)
+        let isKeyDown = flags.contains(key.modifierFlag)
 
         if isKeyDown {
             lastKeyDownTimestamps[event.keyCode] = event.timestamp
@@ -552,6 +546,34 @@ final class ShortcutTriggerManager {
             comboCompleted.removeAll()
             comboPressTimestamps.removeAll()
         }
+    }
+
+    /// #79: Handle a Caps Lock toggle as an instantaneous press + release so it can complete a
+    /// combo. press/release share the same timestamp, so the hold-duration check passes (0). When
+    /// Caps Lock is combined with held modifiers (e.g. Shift+CapsLock), the press marks the combo
+    /// and the trailing modifier's release triggers it, matching normal combo behavior.
+    private func handleCapsLockTap(at timestamp: TimeInterval) {
+        // Press
+        if pressedModifiers[.capsLock] == nil {
+            pressedModifiers[.capsLock] = timestamp
+        }
+        updateComboState(pressedKeys: Set(pressedModifiers.keys), timestamp: timestamp)
+
+        // Immediate release
+        pressedModifiers.removeValue(forKey: .capsLock)
+
+        let pressedKeys = Set(pressedModifiers.keys)
+
+        // Other modifiers still held — defer the trigger to their release.
+        if !pressedKeys.isEmpty {
+            updateComboState(pressedKeys: pressedKeys, timestamp: timestamp)
+            return
+        }
+
+        triggerCompletedCombos(at: timestamp)
+        comboInvalidated.removeAll()
+        comboCompleted.removeAll()
+        comboPressTimestamps.removeAll()
     }
 
     private func updateComboState(pressedKeys: Set<SingleModifierKey>, timestamp: TimeInterval) {
