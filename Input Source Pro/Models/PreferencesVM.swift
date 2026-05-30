@@ -101,7 +101,7 @@ final class PreferencesVM: ObservableObject {
 
         do {
             let data = try Data(contentsOf: url)
-            let backup = try JSONDecoder().decode(SettingsBackup.self, from: data)
+            let backup = try JSONDecoder().decode(SettingsBackupPreferences.self, from: data)
             backup.apply(to: &preferences)
         } catch {
             // Backup corrupted file before it gets overwritten
@@ -123,7 +123,7 @@ final class PreferencesVM: ObservableObject {
         }
 
         do {
-            let backup = SettingsBackup(preferences)
+            let backup = SettingsBackupPreferences(preferences)
             let data = try JSONEncoder().encode(backup)
             try data.write(to: url, options: .atomic)
         } catch {

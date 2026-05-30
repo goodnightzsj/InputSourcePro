@@ -121,7 +121,7 @@ struct GeneralSettingsView: View {
                             .disabled(preferencesVM.preferences.isHideAllIndicators)
                             Text(String(format: "%.1fs", preferencesVM.preferences.indicatorHideDelay))
                                 .frame(width: 35)
-                                .monospacedDigit()
+                                .font(.body.monospacedDigit())
                                 .opacity(preferencesVM.preferences.isHideAllIndicators ? 0.5 : 1)
                         }
                         .padding()
