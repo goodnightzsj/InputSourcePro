@@ -21,4 +21,9 @@ jobs:
             -scheme "Input Source Pro" \
             -destination "generic/platform=macOS" \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -20
+            2>&1 | tee /tmp/build.log; status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then
+            echo "::error::xcodebuild failed (exit code $status). Last 50 lines:"
+            tail -50 /tmp/build.log
+            exit $status
+          fi

@@ -21,7 +21,7 @@ enum InputSourceSwitcher {
         let localizedName: String
         let sourceID: String
         let inputModeID: String?
-        let isCJKV: Bool
+        let isCJKVOrRussian: Bool
 
         @MainActor
         func matches(_ inputSource: InputSource) -> Bool {
@@ -35,6 +35,8 @@ enum InputSourceSwitcher {
 
     private static let logger = ISPLogger(category: String(describing: InputSourceSwitcher.self))
     private static var pendingWorkItems: [DispatchWorkItem] = []
+    private static var isCJKVFixInProgress = false
+    private static var cjkvFixActiveModifiers: CGEventFlags?
     /// Minimum interval between CJKV input source switches to prevent IMKInputSession
     /// deadlocks in Chromium-based browsers (#92, #15). Rapid TISSelectInputSource calls
     /// for CJKV sources can trigger macOS-level deadlocks.
@@ -112,7 +114,7 @@ enum InputSourceSwitcher {
             localizedName: tisTarget.name,
             sourceID: tisTarget.id,
             inputModeID: tisTarget.inputModeID,
-            isCJKV: isCJKVInputSource(tisTarget)
+            isCJKVOrRussian: isCJKVOrRussianInputSource(tisTarget)
         )
 
         switchToTarget(
@@ -126,6 +128,7 @@ enum InputSourceSwitcher {
         modeID: String,
         cJKVFixStrategy: CJKVFixStrategy? = CJKVFixStrategy.defaultStrategy
     ) {
+        cancelPendingWorkItems()
         guard let tisTarget = resolveInputSourceByModeID(modeID) else {
             logger.debug { "No input source found for modeID=\(modeID)" }
             return
@@ -134,8 +137,8 @@ enum InputSourceSwitcher {
         let target = SwitchTarget(
             localizedName: tisTarget.name,
             sourceID: tisTarget.id,
-            inputModeID: modeID,
-            isCJKV: isCJKVInputSource(tisTarget)
+            inputModeID: tisTarget.inputModeID,
+            isCJKVOrRussian: isCJKVOrRussianInputSource(tisTarget)
         )
 
         switchToTarget(
@@ -147,16 +150,15 @@ enum InputSourceSwitcher {
 
     static func switchToInputSource(_ inputSource: InputSource, cJKVFixStrategy: CJKVFixStrategy?) {
         cancelPendingWorkItems()
+        if inputSource.isCJKVR, let modeID = inputSource.inputModeID {
+            return switchToInputMode(modeID: modeID, cJKVFixStrategy: cJKVFixStrategy)
+        }
         let target = SwitchTarget(
             localizedName: inputSource.name,
             sourceID: inputSource.id,
             inputModeID: inputSource.inputModeID,
-            isCJKV: inputSource.isCJKVR
+            isCJKVOrRussian: inputSource.isCJKVR
         )
-
-        if inputSource.isCJKVR, let modeID = inputSource.inputModeID {
-            return switchToInputMode(modeID: modeID, cJKVFixStrategy: cJKVFixStrategy)
-        }
 
         switchToTarget(
             target,
@@ -170,7 +172,7 @@ enum InputSourceSwitcher {
         tisTarget: TISInputSource,
         cJKVFixStrategy: CJKVFixStrategy?
     ) {
-        guard target.isCJKV,
+        guard target.isCJKVOrRussian,
               let cJKVFixStrategy
         else {
             selectInputSource(tisTarget, reason: "target")
@@ -189,6 +191,7 @@ enum InputSourceSwitcher {
         }
         lastCJKVSwitchTime = now
 
+        isCJKVFixInProgress = true
         switch cJKVFixStrategy {
         case .temporaryInputWindow:
             switchToCJKVTargetWithTemporaryInputWindow(target, tisTarget: tisTarget)
@@ -210,6 +213,8 @@ enum InputSourceSwitcher {
             if !target.matches(currentInputSource) {
                 selectInputSource(tisTarget, reason: "CJKV target mismatch fallback")
             }
+            isCJKVFixInProgress = false
+            cjkvFixActiveModifiers = nil
         }
     }
 
@@ -222,22 +227,27 @@ enum InputSourceSwitcher {
               canPostShortcuts()
         else {
             selectInputSource(tisTarget, reason: "CJKV target shortcut fallback")
+            isCJKVFixInProgress = false
+            cjkvFixActiveModifiers = nil
             return
         }
 
         // Suppress modifier event processing in ShortcutTriggerManager for the duration
         // of the CJKV fix sequence (~300ms) to prevent synthetic keyboard events from
         // corrupting modifier tracking state and blocking subsequent shortcut triggers.
+        cjkvFixActiveModifiers = previousShortcut.modifiers
         syntheticEventEndTime = ProcessInfo.processInfo.systemUptime + 0.35
         logger.debug { "Applying CJKV fix using previous input source shortcut" }
         selectInputSource(tisTarget, reason: "CJKV target")
         selectInputSource(nonCJKVSource, reason: "CJKV bounce")
 
         scheduleWorkItem(after: 0.1, execute: {
-            triggerShortcut(previousShortcut, onFinish: { currentInputSouce in
-                if !target.matches(currentInputSouce) {
+            triggerShortcut(previousShortcut, onFinish: { currentInputSource in
+                if !target.matches(currentInputSource) {
                     selectInputSource(tisTarget, reason: "CJKV target mismatch fallback")
                 }
+                isCJKVFixInProgress = false
+                cjkvFixActiveModifiers = nil
             })
         })
     }
@@ -261,7 +271,7 @@ enum InputSourceSwitcher {
     }
 
     private static func resolveNonCJKVSource() -> TISInputSource? {
-        return inputSourceList().first(where: { !isCJKVInputSource($0) && $0.isSelectable && $0.isEnabled })
+        return inputSourceList().first(where: { !isCJKVOrRussianInputSource($0) && $0.isSelectable && $0.isEnabled })
     }
 
     private static func resolveInputSourceByModeID(_ modeID: String) -> TISInputSource? {
@@ -290,18 +300,67 @@ enum InputSourceSwitcher {
         return inputSourceNSArray as? [TISInputSource] ?? []
     }
 
-    private static func isCJKVInputSource(_ source: TISInputSource) -> Bool {
+    private static func isCJKVOrRussianInputSource(_ source: TISInputSource) -> Bool {
         guard let lang = source.sourceLanguages.first else { return false }
-        return lang == "ru" || lang == "ko" || lang == "ja" || lang == "vi" || lang.hasPrefix("zh")
+        return InputSource.isCJKVOrRussianLanguage(lang)
     }
 
     private static func cancelPendingWorkItems() {
+        if isCJKVFixInProgress {
+            if let activeModifiers = cjkvFixActiveModifiers {
+                resetStuckModifiers(activeModifiers)
+            } else {
+                resetAllModifiers()
+            }
+            isCJKVFixInProgress = false
+            cjkvFixActiveModifiers = nil
+        }
         syntheticEventEndTime = 0
-        lastCJKVSwitchTime = 0
+        // Preserve lastCJKVSwitchTime so the debounce window from the previous
+        // switch still applies to the next entry-point call, preventing rapid
+        // CJKV switches from bypassing the IMKInputSession deadlock guard.
         closeTemporaryInputWindow(restorePreviousApplication: true)
         guard !pendingWorkItems.isEmpty else { return }
         pendingWorkItems.forEach { $0.cancel() }
         pendingWorkItems.removeAll()
+    }
+
+    private static let modifierKeyMap: [(CGEventFlags, CGKeyCode)] = [
+        (.maskShift, 56),
+        (.maskControl, 59),
+        (.maskAlternate, 58),
+        (.maskCommand, 55),
+    ]
+
+    private static func resetStuckModifiers(_ flags: CGEventFlags) {
+        let source = CGEventSource(stateID: .hidSystemState)
+        for (flag, keyCode) in modifierKeyMap {
+            guard flags.contains(flag),
+                  let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+                  let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+            else { continue }
+            markSyntheticEvent(keyDown)
+            markSyntheticEvent(keyUp)
+            keyDown.flags = flag
+            keyUp.flags = []
+            keyDown.post(tap: .cghidEventTap)
+            keyUp.post(tap: .cghidEventTap)
+        }
+    }
+
+    private static func resetAllModifiers() {
+        let source = CGEventSource(stateID: .hidSystemState)
+        for (_, keyCode) in modifierKeyMap {
+            guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+                  let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+            else { continue }
+            markSyntheticEvent(keyDown)
+            markSyntheticEvent(keyUp)
+            keyDown.flags = []
+            keyUp.flags = []
+            keyDown.post(tap: .cghidEventTap)
+            keyUp.post(tap: .cghidEventTap)
+        }
     }
 
     private static func scheduleWorkItem(after delay: TimeInterval, execute work: @escaping () -> Void) {
@@ -451,7 +510,7 @@ extension InputSourceSwitcher {
     }
 
     /// Helper to convert legacy Carbon modifier integers to modern CGEventFlags
-    static func convertCarbonModifiersToCGFlags(carbonFlags: Int) -> CGEventFlags {
+    private static func convertCarbonModifiersToCGFlags(carbonFlags: Int) -> CGEventFlags {
         var flags = CGEventFlags()
         
         // Carbon modifier bitmasks
@@ -464,13 +523,15 @@ extension InputSourceSwitcher {
     }
 
     /// Triggers the specified keyboard shortcut programmatically.
-    static func triggerShortcut(_ hotKey: HotKeyInfo, onFinish: @escaping ((InputSource) -> Void)) {
+    private static func triggerShortcut(_ hotKey: HotKeyInfo, onFinish: @escaping ((InputSource) -> Void)) {
         let source = CGEventSource(stateID: .hidSystemState)
         
         guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: hotKey.keyCode, keyDown: true),
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: hotKey.keyCode, keyDown: false)
         else {
             logger.debug { "Failed to create key press event." }
+            isCJKVFixInProgress = false
+            cjkvFixActiveModifiers = nil
             return
         }
         
@@ -482,20 +543,7 @@ extension InputSourceSwitcher {
         keyUp.post(tap: .cghidEventTap)
         
         scheduleWorkItem(after: 0.1, execute: {
-            let kVK_Command: CGKeyCode = 55
-            if let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: kVK_Command, keyDown: true),
-               let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: kVK_Command, keyDown: false) {
-                markSyntheticEvent(cmdDown)
-                markSyntheticEvent(cmdUp)
-                cmdDown.flags = .maskCommand
-                cmdUp.flags = []
-                cmdDown.post(tap: .cghidEventTap)
-                cmdUp.post(tap: .cghidEventTap)
-            } else {
-                logger.debug {
-                    "Failed to create Command event."
-                }
-            }
+            resetStuckModifiers(hotKey.modifiers)
             
             scheduleWorkItem(after: 0.1, execute: {
                 onFinish(InputSource.getCurrentInputSource())

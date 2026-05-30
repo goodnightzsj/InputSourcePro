@@ -26,10 +26,13 @@ class InputSource {
         return id
     }
 
+    static func isCJKVOrRussianLanguage(_ lang: String) -> Bool {
+        lang == "ru" || lang == "ko" || lang == "ja" || lang == "vi" || lang.hasPrefix("zh")
+    }
+
     var isCJKVR: Bool {
         guard let lang = tisInputSource.sourceLanguages.first else { return false }
-
-        return lang == "ru" || lang == "ko" || lang == "ja" || lang == "vi" || lang.hasPrefix("zh")
+        return Self.isCJKVOrRussianLanguage(lang)
     }
 
     init(tisInputSource: TISInputSource) {
